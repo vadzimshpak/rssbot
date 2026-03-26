@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import time
+import os
 
 from dotenv import load_dotenv
 
 from rssbot.config import AppConfig
 from rssbot.rss_reader import RssReader
+from rssbot.scheduler import CronScheduler
 from rssbot.service import RssToTelegramService
 from rssbot.storage import SqliteStorage
 from rssbot.telegram_client import TelegramBotClient
 from rssbot.translator import OpenRouterTranslator
 
 
-def main() -> None:
+def run_once() -> int:
     load_dotenv()
     cfg = AppConfig.from_env()
 
@@ -29,13 +30,23 @@ def main() -> None:
         translate_summary=cfg.translate_summary,
     )
 
-    while True:
-        service.poll_and_post(
-            rss_urls=cfg.rss_urls,
-            chat_id=cfg.telegram_chat_username,
-            max_items=cfg.max_items_per_poll,
-        )
-        time.sleep(cfg.poll_interval_seconds)
+    return service.poll_and_post(
+        rss_urls=cfg.rss_urls,
+        chat_id=cfg.telegram_chat_username,
+        max_items=cfg.max_items_per_poll,
+    )
+
+
+def main() -> None:
+    load_dotenv()
+    cfg = AppConfig.from_env()
+
+    mode = (os.getenv("RUN_MODE") or "cron").strip().lower()
+    if mode == "once":
+        run_once()
+        return
+
+    CronScheduler().run(cron_schedules=cfg.cron_schedules, job=run_once, job_name="rssbot")
 
 
 if __name__ == "__main__":

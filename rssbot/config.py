@@ -56,6 +56,7 @@ class AppConfig:
     add_source_link: bool
     summary_max_chars: int
     translate_summary: bool
+    cron_schedules: list[str]
 
     openrouter_api_key: str
     openrouter_model: str
@@ -76,6 +77,7 @@ class AppConfig:
         add_source_link = _getenv_bool("ADD_SOURCE_LINK", True)
         summary_max_chars = _getenv_int("SUMMARY_MAX_CHARS", 420)
         translate_summary = _getenv_bool("TRANSLATE_SUMMARY", True)
+        cron_schedules = _getenv_list("CRON_SCHEDULES")
 
         openrouter_api_key = _getenv_str("OPENROUTER_API_KEY")
         openrouter_model = _getenv_str("OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -108,6 +110,7 @@ class AppConfig:
             add_source_link=add_source_link,
             summary_max_chars=max(0, summary_max_chars),
             translate_summary=translate_summary,
+            cron_schedules=cron_schedules,
             openrouter_api_key=openrouter_api_key,
             openrouter_model=openrouter_model or "openai/gpt-4o-mini",
             telegram_bot_token=telegram_bot_token,

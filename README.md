@@ -27,6 +27,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
+По умолчанию запуск идёт **по cron** (см. `CRON_SCHEDULES` в `.env`).
+
+Если нужно выполнить один проход вручную:
+
+```bash
+RUN_MODE=once python main.py
+```
+
 ## Структура
 
 - `rssbot/rss_reader.py`: `RssReader` читает RSS и нормализует элементы
