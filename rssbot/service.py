@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from rssbot.storage import SqliteStorage
 from rssbot.telegram_client import TelegramBotClient
 from rssbot.text_utils import clip, html_to_text, strip_reddit_submission_footer
 from rssbot.translator import OpenRouterTranslator
+
+logger = logging.getLogger("rssbot.service")
 
 
 @dataclass(frozen=True)
@@ -29,9 +32,11 @@ class RssToTelegramService:
         if not urls:
             return 0
 
+        logger.debug("Polling RSS sources: count=%s", len(urls))
         candidates: list[tuple[str, RssItem]] = []
         for rss_url in urls:
             items = self.rss_reader.newest_first(self.rss_reader.fetch(rss_url))
+            logger.debug("Fetched items: rss_url=%s count=%s", rss_url, len(items))
             for item in items:
                 candidates.append((rss_url, item))
 
@@ -51,9 +56,11 @@ class RssToTelegramService:
         random.shuffle(new_items)
         limit = max(1, int(max_items or 1))
         to_post = new_items[:limit]
+        logger.debug("Selected items for posting: selected=%s new_total=%s", len(to_post), len(new_items))
 
         posted = 0
         for _rss_url, item, storage_key in to_post:
+            logger.debug("Posting item: id=%s url=%s", item.id, item.url)
             text_ru = self._build_message(item)
             self.telegram.send_message(
                 chat_id=chat_id,

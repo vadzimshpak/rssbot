@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import logging
 
 from dotenv import load_dotenv
 
 from rssbot.config import AppConfig
+from rssbot.logging_setup import LoggingConfig, setup_logging
 from rssbot.rss_reader import RssReader
 from rssbot.scheduler import CronScheduler
 from rssbot.service import RssToTelegramService
@@ -12,10 +14,14 @@ from rssbot.storage import SqliteStorage
 from rssbot.telegram_client import TelegramBotClient
 from rssbot.translator import OpenRouterTranslator
 
+logger = logging.getLogger("rssbot.main")
+
 
 def run_once() -> int:
     load_dotenv()
     cfg = AppConfig.from_env()
+    setup_logging(LoggingConfig(level=cfg.log_level, file_path=cfg.log_file))
+    logger.debug("run_once started")
 
     storage = SqliteStorage(cfg.db_path)
     storage.init()
@@ -30,22 +36,27 @@ def run_once() -> int:
         translate_summary=cfg.translate_summary,
     )
 
-    return service.poll_and_post(
+    posted = service.poll_and_post(
         rss_urls=cfg.rss_urls,
         chat_id=cfg.telegram_chat_username,
         max_items=cfg.max_items_per_poll,
     )
+    logger.debug("run_once finished; posted=%s", posted)
+    return posted
 
 
 def main() -> None:
     load_dotenv()
     cfg = AppConfig.from_env()
+    setup_logging(LoggingConfig(level=cfg.log_level, file_path=cfg.log_file))
 
     mode = (os.getenv("RUN_MODE") or "cron").strip().lower()
     if mode == "once":
+        logger.info("Starting in RUN_MODE=once")
         run_once()
         return
 
+    logger.info("Starting cron scheduler; schedules=%s", cfg.cron_schedules)
     CronScheduler().run(cron_schedules=cfg.cron_schedules, job=run_once, job_name="rssbot")
 
 

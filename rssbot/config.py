@@ -65,6 +65,8 @@ class AppConfig:
     telegram_chat_username: str
 
     db_path: Path
+    log_level: str
+    log_file: Path
 
     @staticmethod
     def from_env() -> "AppConfig":
@@ -86,6 +88,8 @@ class AppConfig:
         telegram_chat_username = _getenv_str("TELEGRAM_CHAT_USERNAME") or _getenv_str("TELEGRAM_CHAT_ID")
 
         db_path = Path(_getenv_str("DB_PATH", "./rssbot.sqlite3"))
+        log_level = _getenv_str("LOG_LEVEL", "DEBUG")
+        log_file = Path(_getenv_str("LOG_FILE", "./rssbot.log"))
 
         missing = []
         if not openrouter_api_key:
@@ -116,4 +120,6 @@ class AppConfig:
             telegram_bot_token=telegram_bot_token,
             telegram_chat_username=telegram_chat_username,
             db_path=db_path,
+            log_level=log_level or "DEBUG",
+            log_file=log_file,
         )
