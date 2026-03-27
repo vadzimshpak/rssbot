@@ -27,7 +27,10 @@ def run_once() -> int:
     storage.init()
 
     service = RssToTelegramService(
-        rss_reader=RssReader(user_agent="rssbot/1.0 (telegram rss poster)"),
+        rss_reader=RssReader(
+            user_agent="rssbot/1.0 (telegram rss poster)",
+            timeout_seconds=cfg.rss_timeout_seconds,
+        ),
         translator=OpenRouterTranslator(api_key=cfg.openrouter_api_key, model=cfg.openrouter_model),
         telegram=TelegramBotClient(bot_token=cfg.telegram_bot_token),
         storage=storage,

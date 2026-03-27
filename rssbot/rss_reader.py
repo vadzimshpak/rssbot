@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 import feedparser
+import requests
 
 from rssbot.models import RssItem
 
@@ -12,9 +13,11 @@ from rssbot.models import RssItem
 @dataclass(frozen=True)
 class RssReader:
     user_agent: str = "rssbot/1.0 (+https://example.com)"
+    timeout_seconds: int = 15
 
     def fetch(self, url: str) -> list[RssItem]:
-        feed = feedparser.parse(url, agent=self.user_agent)
+        content = self._download(url)
+        feed = feedparser.parse(content)
         entries = getattr(feed, "entries", []) or []
         items: list[RssItem] = []
         for e in entries:
@@ -40,6 +43,15 @@ class RssReader:
                 )
             )
         return items
+
+    def _download(self, url: str) -> bytes:
+        r = requests.get(
+            url,
+            headers={"User-Agent": self.user_agent},
+            timeout=self.timeout_seconds,
+        )
+        r.raise_for_status()
+        return r.content
 
     @staticmethod
     def _parse_published(entry: object) -> Optional[datetime]:

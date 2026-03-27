@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import feedparser
+import requests
 
 from rssbot.rss_reader import RssReader
 
@@ -19,18 +20,33 @@ def test_rss_reader_fetch_parses_entries(monkeypatch) -> None:
         published_parsed=(2026, 3, 26, 10, 11, 53, 0, 0, 0),
     )
 
-    def fake_parse(url, agent=None):  # noqa: ANN001
+    class _FakeResponse:
+        def __init__(self, content: bytes) -> None:
+            self.content = content
+
+        def raise_for_status(self) -> None:
+            return None
+
+    def fake_get(url, headers=None, timeout=None):  # noqa: ANN001
         captured["url"] = url
-        captured["agent"] = agent
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return _FakeResponse(b"<rss/>")
+
+    def fake_parse(content):  # noqa: ANN001
+        captured["parse_input_type"] = type(content)
         return SimpleNamespace(entries=[entry])
 
+    monkeypatch.setattr(requests, "get", fake_get)
     monkeypatch.setattr(feedparser, "parse", fake_parse)
 
-    rr = RssReader(user_agent="UA")
+    rr = RssReader(user_agent="UA", timeout_seconds=7)
     items = rr.fetch("https://example.com/feed.rss")
 
     assert captured["url"] == "https://example.com/feed.rss"
-    assert captured["agent"] == "UA"
+    assert captured["headers"]["User-Agent"] == "UA"
+    assert captured["timeout"] == 7
+    assert captured["parse_input_type"] is bytes
     assert len(items) == 1
 
     item = items[0]
@@ -44,9 +60,20 @@ def test_rss_reader_fetch_parses_entries(monkeypatch) -> None:
 def test_rss_reader_skips_incomplete_entries(monkeypatch) -> None:
     bad_entry = SimpleNamespace(id="", link="", title="")
 
-    def fake_parse(url, agent=None):  # noqa: ANN001
+    class _FakeResponse:
+        def __init__(self) -> None:
+            self.content = b"<rss/>"
+
+        def raise_for_status(self) -> None:
+            return None
+
+    def fake_get(url, headers=None, timeout=None):  # noqa: ANN001
+        return _FakeResponse()
+
+    def fake_parse(content):  # noqa: ANN001
         return SimpleNamespace(entries=[bad_entry])
 
+    monkeypatch.setattr(requests, "get", fake_get)
     monkeypatch.setattr(feedparser, "parse", fake_parse)
 
     rr = RssReader()
